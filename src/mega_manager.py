@@ -99,7 +99,7 @@ class MegaManager:
 
     def _extract_sequence_number(self, filename: str) -> Optional[int]:
         stem = Path(filename).stem
-        match = re.search(r"^(?:video|v)[\s_-]*(\d+)", stem, re.IGNORECASE)
+        match = re.search(r"^(?:video|v|thumbnail|thumb|t)?[\s_-]*(\d+)", stem, re.IGNORECASE)
         if match:
             return int(match.group(1))
         return None

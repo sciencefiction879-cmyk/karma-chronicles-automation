@@ -77,7 +77,9 @@ class YouTubeUploader:
                 "title": title[:100],  # Max 100 characters for YouTube title
                 "description": description[:5000],  # Max 5000 chars for description
                 "tags": tags,
-                "categoryId": category_id
+                "categoryId": category_id,
+                "defaultLanguage": "en",
+                "defaultAudioLanguage": "en"
             },
             "status": {
                 "privacyStatus": privacy_status,
@@ -87,7 +89,7 @@ class YouTubeUploader:
         }
 
         logger.info(f"Initiating upload for video: '{title}' (Type: {'Short' if is_short else 'Long-form'})...")
-        logger.info("AI-generated content label: ENABLED ✅")
+        logger.info("AI-generated content label: ENABLED ✅ | Language: English (en) ✅ | Not made for kids: True ✅")
 
         media = MediaFileUpload(
             str(video_path),

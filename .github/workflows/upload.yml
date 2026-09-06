@@ -1,16 +1,16 @@
-name: YouTube Sequential Uploader
+name: YouTube Sequential Uploader - Karma Stories
 
 on:
   schedule:
-    # Slot 1: 7:00 PM Pakistan Standard Time (14:00 UTC)
-    - cron: '0 14 * * *'
-    # Slot 2: 10:00 PM Pakistan Standard Time (17:00 UTC)
-    - cron: '0 17 * * *'
+    # Slot 1: Starts at 7:50 PM PKT (14:50 UTC) for 8:00 PM PKT publication
+    - cron: '50 14 * * *'
+    # Slot 2: Starts at 10:50 PM PKT (17:50 UTC) for 11:00 PM PKT publication
+    - cron: '50 17 * * *'
 
   workflow_dispatch:
     inputs:
       slot:
-        description: 'Slot identifier (slot1 = 7PM PKT, slot2 = 10PM PKT)'
+        description: 'Slot identifier (slot1 = 7:50PM PKT / 8PM slot, slot2 = 10:50PM PKT / 11PM slot)'
         required: false
         default: 'slot1'
       dry_run:
@@ -74,14 +74,11 @@ jobs:
         id: slot_detect
         run: |
           if [ -n "${{ github.event.inputs.slot }}" ]; then
-            # Manual trigger - use provided slot
             echo "SLOT=${{ github.event.inputs.slot }}" >> $GITHUB_ENV
-          elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
-            # 7PM PKT cron
-            echo "SLOT=slot1" >> $GITHUB_ENV
-          elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
-            # 10PM PKT cron
-            echo "SLOT=slot2" >> $GITHUB_ENV
+          elif [ "${{ github.event.schedule }}" = "50 14 * * *" ]; then
+            echo "SLOT=slot1_8pm" >> $GITHUB_ENV
+          elif [ "${{ github.event.schedule }}" = "50 17 * * *" ]; then
+            echo "SLOT=slot2_11pm" >> $GITHUB_ENV
           else
             echo "SLOT=slot1" >> $GITHUB_ENV
           fi
