@@ -1,0 +1,32 @@
+# Channel & Pipeline Configuration - Karma Chronicles (Test 2)
+
+channel:
+  id: "karma_chronicles"
+  name: "Karma Chronicles"
+  owner_email: "arahad7861412@gmail.com"
+
+# Cloud Storage Source
+storage_source: "mega"  # "mega" or "gdrive"
+
+mega:
+  folder_url: "https://mega.nz/folder/PORWABra#E-VBniVbBUGN6bXohdDL5Q"
+
+google_drive:
+  folder_id: ""
+  service_account_file: "credentials/gdrive_service_account.json"
+
+youtube:
+  client_secret_file: "credentials/client_secret.json"
+  oauth_token_file: "tokens/oauth_token.json"
+  default_category_id: "24"       # 24: Entertainment, 22: People & Blogs
+  default_privacy_status: "public" # public, unlisted, or private
+  default_made_for_kids: false
+  shorts_max_seconds: 180
+  description_footer: "\n\n🔔 Subscribe to Karma Chronicles for daily stories of Truth, Karma & Respect!\n\n#Shorts #Karma #Respect #Motivation #LifeLessons"
+
+settings:
+  database_file: "data/state.db"
+  downloads_dir: "downloads"
+  logs_dir: "logs"
+  auto_generate_metadata: true
+  auto_generate_thumbnail: true

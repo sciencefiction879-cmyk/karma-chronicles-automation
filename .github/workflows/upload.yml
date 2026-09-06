@@ -1,0 +1,138 @@
+name: YouTube Sequential Uploader
+
+on:
+  schedule:
+    # Slot 1: 7:00 PM Pakistan Standard Time (14:00 UTC)
+    - cron: '0 14 * * *'
+    # Slot 2: 10:00 PM Pakistan Standard Time (17:00 UTC)
+    - cron: '0 17 * * *'
+
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: 'Slot identifier (slot1 = 7PM PKT, slot2 = 10PM PKT)'
+        required: false
+        default: 'slot1'
+      dry_run:
+        description: 'Dry run (simulate without uploading to YouTube)'
+        type: boolean
+        required: false
+        default: false
+      force_video:
+        description: 'Force specific video sequence (e.g. V1, V2)'
+        required: false
+        default: ''
+
+concurrency:
+  group: youtube-upload-${{ github.event.schedule || github.event.inputs.slot }}
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install System Dependencies (ffmpeg & megatools)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg megatools
+
+      - name: Install Python Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Restore Credentials from Secrets
+        env:
+          YOUTUBE_CLIENT_SECRET_B64: ${{ secrets.YOUTUBE_CLIENT_SECRET_B64 }}
+          YOUTUBE_OAUTH_TOKEN_B64: ${{ secrets.YOUTUBE_OAUTH_TOKEN_B64 }}
+        run: |
+          mkdir -p credentials tokens data logs downloads
+          
+          if [ -n "$YOUTUBE_CLIENT_SECRET_B64" ]; then
+            echo "$YOUTUBE_CLIENT_SECRET_B64" | base64 -d > credentials/client_secret.json
+          fi
+          
+          if [ -n "$YOUTUBE_OAUTH_TOKEN_B64" ]; then
+            echo "$YOUTUBE_OAUTH_TOKEN_B64" | base64 -d > tokens/oauth_token.json
+          fi
+
+      - name: Determine Slot from Schedule
+        id: slot_detect
+        run: |
+          if [ -n "${{ github.event.inputs.slot }}" ]; then
+            # Manual trigger - use provided slot
+            echo "SLOT=${{ github.event.inputs.slot }}" >> $GITHUB_ENV
+          elif [ "${{ github.event.schedule }}" = "0 14 * * *" ]; then
+            # 7PM PKT cron
+            echo "SLOT=slot1" >> $GITHUB_ENV
+          elif [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then
+            # 10PM PKT cron
+            echo "SLOT=slot2" >> $GITHUB_ENV
+          else
+            echo "SLOT=slot1" >> $GITHUB_ENV
+          fi
+          echo "Detected slot: $SLOT"
+
+      - name: Run Sequential Uploader
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MEGA_FOLDER_URL: ${{ secrets.MEGA_FOLDER_URL }}
+        run: |
+          CMD="python run.py --slot $SLOT"
+          
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            CMD="$CMD --dry-run"
+          fi
+          
+          if [ -n "${{ github.event.inputs.force_video }}" ]; then
+            CMD="$CMD --force-video ${{ github.event.inputs.force_video }}"
+          fi
+          
+          echo "Executing: $CMD"
+          $CMD
+
+      - name: Commit and Push Updated State Database
+        if: always() && github.event.inputs.dry_run != 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -f "data/state.db" ]; then
+            git add data/state.db
+            if ! git diff-index --quiet HEAD --; then
+              git commit -m "Update upload state DB [$SLOT] [skip ci]"
+              for i in 1 2 3; do
+                git pull --rebase origin main && git push origin main && break || sleep 5
+              done
+            else
+              echo "No state database changes to commit."
+            fi
+          fi
+
+      - name: Upload Run Logs Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upload-logs-${{ env.SLOT }}
+          path: logs/
+          retention-days: 14
+
+      - name: Wipe Temporary Videos & Credentials from Runner
+        if: always()
+        run: |
+          rm -rf downloads/* temp/* credentials/* tokens/*
+          echo "Server space wiped and 100% clean."
