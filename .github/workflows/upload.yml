@@ -29,9 +29,12 @@ concurrency:
 
 jobs:
   upload:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: write
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout Repository
@@ -45,14 +48,14 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install System Dependencies (ffmpeg & megatools)
+      - name: Install System Dependencies (ffmpeg & megatools via Chocolatey)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg megatools
+          choco install ffmpeg megatools -y --no-progress
+          echo "C:\ProgramData\chocolatey\bin" >> $GITHUB_PATH
 
       - name: Install Python Dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Restore Credentials from Secrets
@@ -63,11 +66,11 @@ jobs:
           mkdir -p credentials tokens data logs downloads
           
           if [ -n "$YOUTUBE_CLIENT_SECRET_B64" ]; then
-            echo "$YOUTUBE_CLIENT_SECRET_B64" | base64 -d > credentials/client_secret.json
+            python -c "import os, base64; open('credentials/client_secret.json', 'wb').write(base64.b64decode(os.environ['YOUTUBE_CLIENT_SECRET_B64']))"
           fi
           
           if [ -n "$YOUTUBE_OAUTH_TOKEN_B64" ]; then
-            echo "$YOUTUBE_OAUTH_TOKEN_B64" | base64 -d > tokens/oauth_token.json
+            python -c "import os, base64; open('tokens/oauth_token.json', 'wb').write(base64.b64decode(os.environ['YOUTUBE_OAUTH_TOKEN_B64']))"
           fi
 
       - name: Determine Slot from Schedule

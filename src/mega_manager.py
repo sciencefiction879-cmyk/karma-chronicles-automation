@@ -64,12 +64,16 @@ class MegaManager:
             logger.warning("megatools binary not found in standard PATH.")
 
     def _get_megatools_bin(self) -> str:
-        if shutil.which("megatools"):
-            return "megatools"
-        if Path("/opt/homebrew/bin/megatools").exists():
-            return "/opt/homebrew/bin/megatools"
-        if Path("/usr/bin/megatools").exists():
-            return "/usr/bin/megatools"
+        for candidate in [
+            "megatools",
+            "megatools.exe",
+            r"C:\ProgramData\chocolatey\bin\megatools.exe",
+            r"C:\Program Files\megatools\megatools.exe",
+            "/opt/homebrew/bin/megatools",
+            "/usr/bin/megatools"
+        ]:
+            if shutil.which(candidate) or Path(candidate).exists():
+                return candidate
         return "megatools"
 
     def download_folder_contents(self) -> Path:
