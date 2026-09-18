@@ -13,6 +13,7 @@ from src.mega_manager import MegaManager
 from src.drive_manager import DriveManager
 from src.video_utils import inspect_video
 from src.youtube_uploader import YouTubeUploader
+from src.browser_studio_uploader import BrowserStudioUploader
 from src.notifier import Notifier
 
 logging.basicConfig(
@@ -31,6 +32,7 @@ def parse_args():
     parser.add_argument("--slot", default=None, help="Slot name for scheduling (e.g. slot1, slot2)")
     parser.add_argument("--dry-run", action="store_true", help="Simulate without uploading to YouTube")
     parser.add_argument("--force-video", default=None, help="Force upload a specific video sequence (e.g. V1, V2)")
+    parser.add_argument("--engine", default="auto", choices=["auto", "browser", "api"], help="Upload engine (auto, browser, api)")
     return parser.parse_args()
 
 
@@ -220,10 +222,28 @@ def main():
             sys.exit(0)
 
         # 7. Upload to YouTube
-        uploader = YouTubeUploader(
-            client_secret_file=config.youtube_client_secret_file,
-            oauth_token_file=config.youtube_oauth_token_file
-        )
+        engine = args.engine.lower()
+        has_cookies = bool(os.getenv("YOUTUBE_COOKIES")) or os.path.exists("tokens/youtube_cookies.json")
+
+        if engine == "browser" or (engine == "auto" and has_cookies):
+            logger.info("Using Browser Studio UI Engine (Playwright Headless + Proxy + Cookies) 🚀")
+            try:
+                uploader = BrowserStudioUploader(
+                    cookies_file="tokens/youtube_cookies.json",
+                    proxy_url=os.getenv("STUDIO_PROXY")
+                )
+            except Exception as e:
+                logger.warning(f"Browser uploader initialization failed: {e}. Falling back to Official API...")
+                uploader = YouTubeUploader(
+                    client_secret_file=config.youtube_client_secret_file,
+                    oauth_token_file=config.youtube_oauth_token_file
+                )
+        else:
+            logger.info("Using Official YouTube Data API v3 Engine 🚀")
+            uploader = YouTubeUploader(
+                client_secret_file=config.youtube_client_secret_file,
+                oauth_token_file=config.youtube_oauth_token_file
+            )
 
         upload_result = uploader.upload_video(
             video_path=target_video_path,

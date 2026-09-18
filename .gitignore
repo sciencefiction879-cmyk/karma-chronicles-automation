@@ -13,6 +13,7 @@ venv/
 credentials/
 tokens/
 *.json
+*.b64
 !tests/fixtures/*.json
 !sample_*.json
 
